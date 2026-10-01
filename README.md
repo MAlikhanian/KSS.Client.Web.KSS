@@ -20,8 +20,8 @@ npx --yes npm@11.6.0 audit
 
 The build produces `.next/standalone`. The Dockerfile includes the standalone server,
 static chunks, and public assets, running as a non-root user on port 8000.
-`deployment/deployment.example.yaml` contains only a Deployment and a Service;
-replace its example image before use. HTTPS routing for `kss.ir` is configured separately.
+`deployment/deployment.yaml` is the cluster manifest containing a Namespace, Deployment,
+Service, PodDisruptionBudget, and Ingress with TLS for `kss.ir`.
 
 `/api/health` returns `{"status":"ok"}`. Public canonical URLs use `https://kss.ir`.
 The site has no authentication, forms, analytics, cookies, or external data source.

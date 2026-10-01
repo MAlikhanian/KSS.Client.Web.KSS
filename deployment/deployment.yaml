@@ -1,0 +1,188 @@
+# =============================================================================
+#  KSS Client Web - kss: the public company website (kss.ir, www.kss.ir)
+# =============================================================================
+#  A standalone public site on its own hosts. It is NOT a Shell zone: it is
+#  never composed into the Shell and holds no session and no secret.
+#
+#  NOT IN THIS FILE, BY DESIGN:
+#   - Any Secret: the app needs none. There is no NEXTAUTH_SECRET here.
+#   - A NetworkPolicy.
+#
+#  NEEDED IN THE NAMESPACE BEFORE THE FIRST ROLLOUT:
+#   - docker-secret (image pull). Secrets are namespace-scoped. Without it the
+#     pods sit in ImagePullBackOff.
+#
+#  NAMES: namespace, Deployment and image follow the estate rule
+#  kss-client-web-<slug> with slug "kss", which is what the generated build and
+#  rollout lines expect. Change them together or not at all.
+# =============================================================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kss-client-web-kss
+  labels:
+    name: kss-client-web-kss
+    app: kss-client-web-kss
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kss-client-web-kss
+  namespace: kss-client-web-kss
+  labels:
+    app: kss-client-web-kss
+    version: v1.0.0
+  annotations:
+    keel.sh/policy: force
+    keel.sh/match-tag: "true"
+    keel.sh/trigger: poll
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: kss-client-web-kss
+  template:
+    metadata:
+      labels:
+        app: kss-client-web-kss
+        version: v1.0.0
+    spec:
+      automountServiceAccountToken: false
+      imagePullSecrets:
+      - name: docker-secret
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: kss-client-web-kss
+        image: docker-hosted.sebaoffice.ir/kss-client-web-kss:latest
+        imagePullPolicy: Always
+        ports:
+        # The image's Dockerfile sets PORT=8000 and EXPOSE 8000.
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "8000"
+        - name: HOSTNAME
+          value: "0.0.0.0"
+        - name: TZ
+          value: "UTC"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
+        # /api/health answers without a session or any other service.
+        livenessProbe:
+          httpGet: { path: /api/health, port: http, scheme: HTTP }
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 5
+        readinessProbe:
+          httpGet: { path: /api/health, port: http, scheme: HTTP }
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+        startupProbe:
+          httpGet: { path: /api/health, port: http, scheme: HTTP }
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 24
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop: [ALL]
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kss-client-web-kss-service
+  namespace: kss-client-web-kss
+  labels:
+    app: kss-client-web-kss
+spec:
+  selector:
+    app: kss-client-web-kss
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+  type: ClusterIP
+  sessionAffinity: None
+---
+# minAvailable 1 against replicas 2: strictly below replicas, or a node drain
+# deadlocks.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: kss-client-web-kss-pdb
+  namespace: kss-client-web-kss
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: kss-client-web-kss
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kss-client-web-kss-ingress
+  namespace: kss-client-web-kss
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # The ACME challenge is served through this same Ingress, so it reaches the controller that
+    # answers these hosts.
+    acme.cert-manager.io/http01-edit-in-place: "true"
+    # These hosts are answered by the haproxy-saj-erp controller. The class annotation and
+    # spec.ingressClassName are both set and MUST carry the same value: if they disagree, a
+    # controller for another class can claim this Ingress.
+    kubernetes.io/ingress.class: haproxy-saj-erp
+spec:
+  ingressClassName: haproxy-saj-erp
+  tls:
+  # One certificate for both names. Each hostname appears in tls.hosts AND in rules; change both
+  # places together.
+  - hosts:
+    - kss.ir
+    - www.kss.ir
+    secretName: kss-client-web-kss-tls
+  rules:
+  - host: kss.ir
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kss-client-web-kss-service
+            port:
+              number: 80
+  - host: www.kss.ir
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kss-client-web-kss-service
+            port:
+              number: 80
