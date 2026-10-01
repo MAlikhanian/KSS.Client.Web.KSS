@@ -60,6 +60,7 @@ spec:
         runAsNonRoot: true
         runAsUser: 1001
         runAsGroup: 1001
+        fsGroup: 1001
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -105,9 +106,17 @@ spec:
           failureThreshold: 24
         securityContext:
           allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: false
+          readOnlyRootFilesystem: true
           capabilities:
             drop: [ALL]
+        # Keep the runtime cache writable while the image filesystem is read-only.
+        volumeMounts:
+        - name: next-cache
+          mountPath: /app/.next/cache
+      volumes:
+      - name: next-cache
+        emptyDir:
+          sizeLimit: 64Mi
       restartPolicy: Always
       terminationGracePeriodSeconds: 30
 ---
