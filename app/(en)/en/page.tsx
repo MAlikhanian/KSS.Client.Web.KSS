@@ -1,5 +1,5 @@
-import { ComingSoon } from '@/components/coming-soon';
+import { MarketingSite } from "@/components/marketing-site";
 
 export default function EnglishHome() {
-  return <ComingSoon lang="en" />;
+  return <MarketingSite lang="en" />;
 }

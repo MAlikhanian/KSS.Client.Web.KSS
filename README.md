@@ -1,6 +1,20 @@
 # KSS website
 
-A bilingual coming-soon site: Persian at `/`, English at `/en`.
+A bilingual marketing site: Persian at `/`, English at `/en`, with light and dark
+Kiwi Seed themes. The theme follows the system preference and can be switched for
+the current page without cookies or browser storage.
+
+The bilingual service catalogue is in `components/services.ts`, with explicit
+Available, Pilot and Roadmap statuses. Public contact details are in
+`components/contact.ts`; the contact block has no form. Company registration
+values in `components/public-data.ts` appear with Persian digits on the Persian
+page and Latin digits on the English page; empty or undefined values render no line.
+The fluid layout expands across large displays while keeping body text readable.
+
+The visitor counter is hidden until real counts are available. Its data slot in
+`components/public-data.ts` is null by default, and its component returns nothing
+for missing or invalid counts. No demo counts are included. There is no visitor
+request, beacon or analytics backend in this version.
 
 Use Node.js 22.14 or later and npm 11.6.0.
 
