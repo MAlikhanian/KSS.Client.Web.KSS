@@ -309,8 +309,8 @@ export const services: readonly Service[] = [
       en: "Routers & Edge Security (MikroTik)",
     },
     oneLiner: {
-      fa: "روترهای میکروتیک با دسترسی مدیریتی محدودشده و پشتیبان رمزگذاری‌شده هفتگی.",
-      en: "MikroTik routers with locked-down management and encrypted backups every week.",
+      fa: "روترهای میکروتیک با دسترسی مدیریتی محدودشده.",
+      en: "MikroTik routers with locked-down management access.",
     },
     icon: "network",
     availability: "available",
